@@ -15,6 +15,7 @@
     "@remix-run/express": "^1.10.1",
     "@remix-run/node": "^1.10.1",
     "@remix-run/react": "^1.10.1",
+    "chess.js": "^1.0.0-beta.1",
     "compression": "^1.7.4",
     "cross-env": "^7.0.3",
     "express": "^4.18.2",
@@ -22,6 +23,7 @@
     "morgan": "^1.10.0",
     "prettier": "^2.8.3",
     "react": "^18.2.0",
+    "react-chessboard": "^2.0.8",
     "react-dom": "^18.2.0"
   },
   "devDependencies": {

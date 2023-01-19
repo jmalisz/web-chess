@@ -695,24 +695,36 @@ select {
   margin: auto;
 }
 
-.mt-4 {
-  margin-top: 1rem;
+.mr-auto {
+  margin-right: auto;
+}
+
+.ml-auto {
+  margin-left: auto;
 }
 
 .flex {
   display: flex;
 }
 
-.h-20 {
-  height: 5rem;
+.grid {
+  display: grid;
 }
 
 .h-screen {
   height: 100vh;
 }
 
+.h-full {
+  height: 100%;
+}
+
 .w-full {
   width: 100%;
+}
+
+.w-60 {
+  width: 15rem;
 }
 
 .max-w-5xl {
@@ -723,16 +735,20 @@ select {
   flex-grow: 1;
 }
 
+.grow {
+  flex-grow: 1;
+}
+
+.resize-none {
+  resize: none;
+}
+
+.grid-cols-3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 .flex-col {
   flex-direction: column;
-}
-
-.content-center {
-  align-content: center;
-}
-
-.content-between {
-  align-content: space-between;
 }
 
 .items-center {
@@ -743,12 +759,37 @@ select {
   justify-content: center;
 }
 
+.gap-4 {
+  gap: 1rem;
+}
+
+.gap-2 {
+  gap: 0.5rem;
+}
+
+.gap-10 {
+  gap: 2.5rem;
+}
+
 .rounded {
   border-radius: 0.25rem;
 }
 
+.rounded-lg {
+  border-radius: 0.5rem;
+}
+
+.border {
+  border-width: 1px;
+}
+
 .border-b {
   border-bottom-width: 1px;
+}
+
+.border-gray-200 {
+  --tw-border-opacity: 1;
+  border-color: rgb(229 231 235 / var(--tw-border-opacity));
 }
 
 .border-b-gray-200 {
@@ -761,8 +802,31 @@ select {
   background-color: rgb(59 130 246 / var(--tw-bg-opacity));
 }
 
+.bg-red-200 {
+  --tw-bg-opacity: 1;
+  background-color: rgb(254 202 202 / var(--tw-bg-opacity));
+}
+
+.bg-blue-200 {
+  --tw-bg-opacity: 1;
+  background-color: rgb(191 219 254 / var(--tw-bg-opacity));
+}
+
+.bg-gray-100 {
+  --tw-bg-opacity: 1;
+  background-color: rgb(243 244 246 / var(--tw-bg-opacity));
+}
+
 .p-4 {
   padding: 1rem;
+}
+
+.p-2 {
+  padding: 0.5rem;
+}
+
+.p-10 {
+  padding: 2.5rem;
 }
 
 .py-2 {
@@ -775,9 +839,12 @@ select {
   padding-right: 1rem;
 }
 
-.text-blue-500 {
-  --tw-text-opacity: 1;
-  color: rgb(59 130 246 / var(--tw-text-opacity));
+.pt-10 {
+  padding-top: 2.5rem;
+}
+
+.text-center {
+  text-align: center;
 }
 
 .text-white {
@@ -785,16 +852,33 @@ select {
   color: rgb(255 255 255 / var(--tw-text-opacity));
 }
 
-.text-opacity-70 {
-  --tw-text-opacity: 0.7;
-}
-
-.text-opacity-20 {
-  --tw-text-opacity: 0.2;
+.text-blue-500 {
+  --tw-text-opacity: 1;
+  color: rgb(59 130 246 / var(--tw-text-opacity));
 }
 
 .opacity-20 {
   opacity: 0.2;
+}
+
+.\[grid-template-areas\:\'chessboard_chessboard_chat\'\'goBack_goBack_goBack\'\] {
+  grid-template-areas: 'chessboard chessboard chat''goBack goBack goBack';
+}
+
+.\[grid-template-rows\:70\%_1fr\] {
+  grid-template-rows: 70% 1fr;
+}
+
+.\[grid-area\:chessboard\] {
+  grid-area: chessboard;
+}
+
+.\[grid-area\:chat\] {
+  grid-area: chat;
+}
+
+.\[grid-area\:goBack\] {
+  grid-area: goBack;
 }
 
 .hover\:bg-blue-600:hover {
@@ -802,17 +886,11 @@ select {
   background-color: rgb(37 99 235 / var(--tw-bg-opacity));
 }
 
-.focus\:bg-blue-400:focus {
-  --tw-bg-opacity: 1;
-  background-color: rgb(96 165 250 / var(--tw-bg-opacity));
-}
-
 .active\:bg-blue-400:active {
   --tw-bg-opacity: 1;
   background-color: rgb(96 165 250 / var(--tw-bg-opacity));
 }
 
-.focus\:active\:bg-blue-400:active:focus {
-  --tw-bg-opacity: 1;
-  background-color: rgb(96 165 250 / var(--tw-bg-opacity));
+.peer.bg-red-200 ~ .peer-\[\.bg-red-200\]\:-mt-1 {
+  margin-top: -0.25rem;
 }

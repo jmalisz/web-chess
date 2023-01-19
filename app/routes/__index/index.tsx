@@ -1,17 +1,21 @@
-import { Form } from "@remix-run/react";
+import { Link } from "@remix-run/react";
 
-export default function Index() {
+import { Button } from "~/components/Button";
+
+export function IndexRoute() {
   return (
-    <div>
-      Would you want to play a game of chess?
-      <Form className="mt-4">
-        <button
-          className="w-full rounded bg-blue-500  py-2 px-4 text-white hover:bg-blue-600 active:bg-blue-400"
-          type="submit"
-        >
-          Play
-        </button>
-      </Form>
+    <div className="flex flex-col gap-4">
+      <span className="m-auto">Would you want to play a game of chess?</span>
+      <div className="m-auto flex gap-4">
+        <Link to="/game">
+          <Button className="w-60">Play with another person</Button>
+        </Link>
+        <Link to="/game">
+          <Button className="w-60">Play with computer</Button>
+        </Link>
+      </div>
     </div>
   );
 }
+
+export default IndexRoute;

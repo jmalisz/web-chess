@@ -44,12 +44,7 @@ module.exports = {
     "react/destructuring-assignment": "off",
     // No jsx extension: https://github.com/facebook/create-react-app/issues/87#issuecomment-234627904
     "react/jsx-filename-extension": "off",
-    "react/jsx-props-no-spreading": [
-      "warn",
-      {
-        exceptions: ["Component"],
-      },
-    ],
+    "react/jsx-props-no-spreading": "warn",
     "react/jsx-sort-props": [
       "warn",
       {
@@ -82,6 +77,7 @@ module.exports = {
     // Common abbreviations are known and readable
     "unicorn/prevent-abbreviations": "off",
     "unicorn/no-array-for-each": "off",
+    "unicorn/no-useless-undefined": "off",
     // Use PascalCase for components/pages and camelCase for rest
     "unicorn/filename-case": [
       "error",
