@@ -6,7 +6,7 @@ export default function Index() {
       <header className="sticky top-0 w-full border-b border-b-gray-200">
         <div className="m-auto max-w-5xl p-4">
           <Link to="/">
-            <h1 className="text-blue-500">Web-Chess</h1>
+            <h1 className="text-3xl text-primary focus:text-primary-focus">Web-Chess</h1>
           </Link>
         </div>
       </header>

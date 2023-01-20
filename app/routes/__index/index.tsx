@@ -1,17 +1,19 @@
 import { Link } from "@remix-run/react";
 
-import { Button } from "~/components/Button";
-
 export function IndexRoute() {
   return (
     <div className="flex flex-col gap-4">
-      <span className="m-auto">Would you want to play a game of chess?</span>
+      <h2 className="m-auto text-2xl">Would you want to play a game of chess?</h2>
       <div className="m-auto flex gap-4">
         <Link to="/game">
-          <Button className="w-60">Play with another person</Button>
+          <button className="btn-primary btn" type="button">
+            Play with another person
+          </button>
         </Link>
         <Link to="/game">
-          <Button className="w-60">Play with computer</Button>
+          <button className="btn-primary btn" type="button">
+            Play with computer
+          </button>
         </Link>
       </div>
     </div>

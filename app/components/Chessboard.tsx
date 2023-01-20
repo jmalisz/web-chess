@@ -2,8 +2,6 @@ import type { Chess, Square } from "chess.js";
 import { useCallback, useState } from "react";
 import { Chessboard } from "react-chessboard";
 
-import { Button } from "./Button";
-
 type PossibleMovesType = Record<string, { background?: string; borderRadius?: string }>;
 
 type GameChessboardProps = {
@@ -114,7 +112,7 @@ export function GameChessboard({
   );
 
   return (
-    <>
+    <div>
       <Chessboard
         arePiecesDraggable={false}
         boardOrientation={side}
@@ -123,29 +121,36 @@ export function GameChessboard({
         customBoardStyle={{
           borderRadius: "4px",
           boxShadow: "0 2px 10px rgba(0, 0, 0, 0.5)",
+          marginBottom: 16,
         }}
         onSquareClick={onSquareClick}
       />
-      <Button
-        onClick={() => {
-          game.reset();
-          deselectPiece();
-          setPosition(game.fen());
-          onSurrender?.();
-        }}
-      >
-        Surrender
-      </Button>
-      <Button
-        onClick={() => {
-          game.undo();
-          deselectPiece();
-          setPosition(game.fen());
-          onUndo?.();
-        }}
-      >
-        Undo
-      </Button>
-    </>
+      <div className="flex gap-2">
+        <button
+          className="btn-outline btn"
+          type="button"
+          onClick={() => {
+            game.reset();
+            deselectPiece();
+            setPosition(game.fen());
+            onSurrender?.();
+          }}
+        >
+          Surrender
+        </button>
+        <button
+          className="btn-outline btn"
+          type="button"
+          onClick={() => {
+            game.undo();
+            deselectPiece();
+            setPosition(game.fen());
+            onUndo?.();
+          }}
+        >
+          Undo
+        </button>
+      </div>
+    </div>
   );
 }
