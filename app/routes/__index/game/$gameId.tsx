@@ -41,6 +41,12 @@ export function GameRoute() {
 
   const [game, setGame] = useState(new Chess());
 
+  useEffect(() => {
+    if (!socketIo) return;
+
+    socketIo.emit("newGame", { gameId });
+  }, []);
+
   const chatKeyUpHandler = useCallback(
     (event: KeyboardEvent<HTMLDivElement>) => {
       if (!socketIo) return;

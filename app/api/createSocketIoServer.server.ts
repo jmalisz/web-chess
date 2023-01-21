@@ -6,8 +6,9 @@ import { createServer } from "node:http";
 import type { Express } from "express";
 import { Server } from "socket.io";
 import { z } from "zod";
-
+import { nanoid } from "nanoid";
 import { createSessionStore } from "./inMemoryStores";
+import { Chess } from "chess.js";
 
 declare module "socket.io" {
   interface Socket {
@@ -19,13 +20,17 @@ declare module "socket.io" {
   }
 }
 
-const socketIoCustomDataSchema = z.object({
+const initialHandshakeInputSchema = z.object({
+  sessionId: z.string(),
+});
+const socketIoSessionDataSchema = z.object({
   sessionId: z.string(),
   userId: z.string(),
   gameId: z.string(),
   gamePosition: z.string(),
   chatMessages: z.array(z.string()),
 });
+export type SocketIoSessionDataSchema = z.infer<typeof socketIoSessionDataSchema>;
 const newGamePositionSchema = z.object({
   gameId: z.string(),
   gamePosition: z.string(),
@@ -42,10 +47,10 @@ export function createSocketIoServer(app: Express) {
   const sessionStore = createSessionStore();
   const httpServer = createServer(app);
   const socketIoServer = new Server(httpServer);
+  const chess = new Chess();
 
   socketIoServer.use((socketIo, next) => {
-    const { sessionId, userId, gameId, gamePosition, chatMessages } =
-      socketIoCustomDataSchema.parse(socketIo.handshake.auth);
+    const { sessionId } = initialHandshakeInputSchema.parse(socketIo.handshake.auth);
 
     if (sessionId) {
       const session = sessionStore.findSession(sessionId);
@@ -62,10 +67,10 @@ export function createSocketIoServer(app: Express) {
     }
 
     socketIo.sessionId = sessionId;
-    socketIo.gameId = userId;
-    socketIo.gameId = gameId;
-    socketIo.gamePosition = gamePosition;
-    socketIo.chatMessages = chatMessages;
+    socketIo.userId = nanoid();
+    socketIo.gameId = nanoid();
+    socketIo.gamePosition = chess.fen();
+    socketIo.chatMessages = [];
 
     next();
   });
@@ -75,11 +80,13 @@ export function createSocketIoServer(app: Express) {
       const { sessionId, ...freshSessionData } = socketIo;
       sessionStore.saveSession(sessionId, {
         userId: freshSessionData.userId,
-        gameId: freshSessionData.gameId,
-        gamePosition: freshSessionData.gamePosition,
-        chatMessages: freshSessionData.chatMessages,
       });
-      socketIo.emit("connected", "Connected!");
+      socketIo.emit("connected", {
+        sessionId,
+        userId: freshSessionData.userId,
+      });
+
+      socketIo.on("checkGameId", ())
 
       // TODO: Add server game history validation
       socketIo.on("newGamePosition", (data) => {

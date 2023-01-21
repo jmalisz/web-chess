@@ -1,8 +1,5 @@
-type SessionData = {
+export type SessionData = {
   userId: string;
-  gameId: string;
-  gamePosition: string;
-  chatMessages: string[];
 };
 
 export function createSessionStore() {
@@ -26,5 +23,35 @@ export function createSessionStore() {
     findSession,
     saveSession,
     clearSession,
+  };
+}
+
+export type GameData = {
+  gameId: string;
+  gamePosition: string;
+  chatMessages: string[];
+};
+
+export function createGameStore() {
+  const gameStore = new Map<string, GameData>();
+
+  // Clear store every 24h to not overwhelm the server
+  // TODO: Not ideal, find better solution. Probably a no-sql db.
+  setInterval(() => gameStore.clear(), 24 * 60 * 60 * 1000);
+
+  function findGame(gameId: string) {
+    return gameStore.get(gameId);
+  }
+  function saveGame(gameId: string, gameData: GameData) {
+    return gameStore.set(gameId, gameData);
+  }
+  function clearGame(gameId: string) {
+    gameStore.delete(gameId);
+  }
+
+  return {
+    findGame,
+    saveGame,
+    clearGame,
   };
 }
