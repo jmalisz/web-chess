@@ -5,9 +5,13 @@ import compression from "compression";
 import express from "express";
 import morgan from "morgan";
 
+import { createSocketIoServer } from "./api/createSocketIoServer.server";
+
 const BUILD_DIR = path.join(process.cwd(), "build");
 
 const app = express();
+
+const { httpServer } = createSocketIoServer(app);
 
 app.use(compression());
 
@@ -43,7 +47,7 @@ app.all(
 );
 const port = process.env.PORT || 3000;
 
-app.listen(port, () => {
+httpServer.listen(port, () => {
   // eslint-disable-next-line no-console
   console.log(`Express server is running at http://localhost:${port}`);
 });

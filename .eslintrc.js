@@ -104,7 +104,7 @@ module.exports = {
     },
     // Allow default exports where it makes sense
     {
-      files: ["app/routes/*.*", "app/routes/*/*.*", "entry.*.*", "root.tsx"],
+      files: ["app/routes/**.*", "app/routes/**/**.*", "entry.*.*", "root.tsx"],
       rules: {
         "import/no-default-export": "off",
         "import/prefer-default-export": "error",

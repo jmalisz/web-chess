@@ -2,6 +2,8 @@ import type { Chess, Square } from "chess.js";
 import { useCallback, useState } from "react";
 import { Chessboard } from "react-chessboard";
 
+const defaultGameHeader = "Game is in session...";
+
 type PossibleMovesType = Record<string, { background?: string; borderRadius?: string }>;
 
 type GameChessboardProps = {
@@ -25,6 +27,17 @@ export function GameChessboard({
   const [position, setPosition] = useState(game.fen());
   const [moveFrom, setMoveFrom] = useState("");
   const [possibleMoves, setPossibleMoves] = useState<PossibleMovesType>();
+  const [gameHeader, setGameHeader] = useState(defaultGameHeader);
+
+  const getGameHeader = useCallback(() => {
+    if (game.isCheckmate()) return game.turn() === side[0] ? "Black won!" : "White won!";
+
+    if (game.isGameOver()) return "Draw!";
+
+    if (game.isCheck()) return side === "white" ? "White in check!" : "Black in check!";
+
+    return defaultGameHeader;
+  }, [game, side]);
 
   const deselectPiece = useCallback(() => {
     setMoveFrom("");
@@ -33,16 +46,16 @@ export function GameChessboard({
 
   const onSquareClick = useCallback(
     (square: Square) => {
-      // function makeRandomMove() {
-      //   const possibleRandomMove = game.moves();
+      function makeRandomMove() {
+        const possibleRandomMove = game.moves();
 
-      //   // exit if the game is over
-      //   if (game.isGameOver() || game.isDraw() || possibleRandomMove.length === 0) return;
+        // exit if the game is over
+        if (game.isGameOver() || game.isDraw() || possibleRandomMove.length === 0) return;
 
-      //   const randomIndex = Math.floor(Math.random() * possibleRandomMove.length);
-      //   game.move(possibleRandomMove[randomIndex]);
-      //   setPosition(game.fen());
-      // }
+        const randomIndex = Math.floor(Math.random() * possibleRandomMove.length);
+        game.move(possibleRandomMove[randomIndex]);
+        setPosition(game.fen());
+      }
 
       function getPossibleMoves(selectedPiece: Square) {
         const moves = game.moves({
@@ -105,26 +118,30 @@ export function GameChessboard({
       setMoveFrom("");
       setPossibleMoves(undefined);
       setPosition(newPosition);
+      setGameHeader(getGameHeader());
       onMove?.(newPosition);
-      // setTimeout(makeRandomMove, 300);
+      setTimeout(makeRandomMove, 300);
     },
-    [moveFrom, game, side, possibleMoves, onMove, deselectPiece]
+    [moveFrom, game, side, possibleMoves, getGameHeader, onMove, deselectPiece]
   );
 
   return (
-    <div>
-      <Chessboard
-        arePiecesDraggable={false}
-        boardOrientation={side}
-        customSquareStyles={possibleMoves}
-        position={position}
-        customBoardStyle={{
-          borderRadius: "4px",
-          boxShadow: "0 2px 10px rgba(0, 0, 0, 0.5)",
-          marginBottom: 16,
-        }}
-        onSquareClick={onSquareClick}
-      />
+    <div className="flex grow flex-col gap-4">
+      <div className="text-center">{gameHeader}</div>
+      <div>
+        <Chessboard
+          arePiecesDraggable={false}
+          boardOrientation={side}
+          customSquareStyles={possibleMoves}
+          position={position}
+          customBoardStyle={{
+            borderRadius: "4px",
+            boxShadow: "0 2px 10px rgba(0, 0, 0, 0.5)",
+            marginBottom: 16,
+          }}
+          onSquareClick={onSquareClick}
+        />
+      </div>
       <div className="flex gap-2">
         <button
           className="btn-outline btn"
@@ -133,10 +150,11 @@ export function GameChessboard({
             game.reset();
             deselectPiece();
             setPosition(game.fen());
+            setGameHeader(getGameHeader());
             onSurrender?.();
           }}
         >
-          Surrender
+          Reset
         </button>
         <button
           className="btn-outline btn"
@@ -145,6 +163,7 @@ export function GameChessboard({
             game.undo();
             deselectPiece();
             setPosition(game.fen());
+            setGameHeader(getGameHeader());
             onUndo?.();
           }}
         >
