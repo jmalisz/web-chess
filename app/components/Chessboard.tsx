@@ -1,5 +1,5 @@
 import type { Chess, Square } from "chess.js";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Chessboard } from "react-chessboard";
 
 const defaultGameHeader = "Game is in session...";
@@ -29,6 +29,10 @@ export function GameChessboard({
   const [possibleMoves, setPossibleMoves] = useState<PossibleMovesType>();
   const [gameHeader, setGameHeader] = useState(defaultGameHeader);
 
+  useEffect(() => {
+    setPosition(game.fen());
+  }, [game]);
+
   const getGameHeader = useCallback(() => {
     if (game.isCheckmate()) return game.turn() === side[0] ? "Black won!" : "White won!";
 
@@ -46,17 +50,6 @@ export function GameChessboard({
 
   const onSquareClick = useCallback(
     (square: Square) => {
-      function makeRandomMove() {
-        const possibleRandomMove = game.moves();
-
-        // exit if the game is over
-        if (game.isGameOver() || game.isDraw() || possibleRandomMove.length === 0) return;
-
-        const randomIndex = Math.floor(Math.random() * possibleRandomMove.length);
-        game.move(possibleRandomMove[randomIndex]);
-        setPosition(game.fen());
-      }
-
       function getPossibleMoves(selectedPiece: Square) {
         const moves = game.moves({
           square: selectedPiece,
@@ -120,7 +113,6 @@ export function GameChessboard({
       setPosition(newPosition);
       setGameHeader(getGameHeader());
       onMove?.(newPosition);
-      setTimeout(makeRandomMove, 300);
     },
     [moveFrom, game, side, possibleMoves, getGameHeader, onMove, deselectPiece]
   );

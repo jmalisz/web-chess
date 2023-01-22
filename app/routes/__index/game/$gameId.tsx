@@ -2,11 +2,13 @@ import { useParams } from "@remix-run/react";
 import { Chess } from "chess.js";
 import type { KeyboardEvent } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { z } from "zod";
 
-import type { NewChatMessageSchemaInput } from "~/api/createSocketIoServer.server";
 // import sanitizeHtml from "sanitize-html";
 import { GameChessboard } from "~/components/Chessboard";
 import { useSocketIo } from "~/hooks/useSocketIo";
+import type { SocketIoSessionDataSchema } from "~/utils/models";
+import { socketIoGameDataSchema } from "~/utils/models";
 
 // function parseChatMessage(chatMessage: string) {
 //   const lineBreak = "<br/>";
@@ -35,43 +37,69 @@ export function GameRoute() {
   const { gameId } = useParams();
   if (!gameId) throw new Error("This shouldn't be matched by router");
 
-  const socketIo = useSocketIo();
+  const socketContext = useSocketIo();
 
   const chatInputRef = useRef<HTMLDivElement>(null);
 
-  const [game, setGame] = useState(new Chess());
+  const [game, setGame] = useState<Chess>();
+  const [gameData, setGameData] = useState<SocketIoSessionDataSchema>();
 
   useEffect(() => {
-    if (!socketIo) return;
+    if (!socketContext) return;
 
-    socketIo.emit("newGame", { gameId });
-  }, []);
+    const { socketIo } = socketContext;
 
-  const chatKeyUpHandler = useCallback(
-    (event: KeyboardEvent<HTMLDivElement>) => {
-      if (!socketIo) return;
+    socketIo.emit("enterGameRoom", { gameId });
+    socketIo.on("enterGameRoom", (data) => {
+      const newGameData = socketIoGameDataSchema.parse(data);
+      setGameData(newGameData);
+      setGame(new Chess(newGameData.gamePosition));
+    });
+    socketIo.on("newGamePosition", (data) => {
+      const { newGamePosition } = z.object({ newGamePosition: z.string() }).parse(data);
+      setGameData((prev) => {
+        if (!prev) throw new Error("Unexpected lack of gameData on newGamePosition");
 
-      const { key, shiftKey } = event;
-      if (key === "Enter" && !shiftKey) {
-        event.preventDefault();
+        return { ...prev, gamePosition: newGamePosition };
+      });
+      setGame(new Chess(newGamePosition));
+    });
+  }, [gameId, socketContext]);
 
-        if (!chatInputRef.current?.textContent) return;
+  // const chatKeyUpHandler = useCallback(
+  //   (event: KeyboardEvent<HTMLDivElement>) => {
+  //     if (!socketIo) return;
 
-        const newChatMessagePayload: NewChatMessageSchemaInput = {
-          userId: "123",
-          gameId,
-          newChatMessage: chatInputRef.current.textContent,
-        };
-        socketIo.emit("newChatMessage", newChatMessagePayload);
-      }
-    },
-    [gameId, socketIo]
-  );
+  //     const { key, shiftKey } = event;
+  //     if (key === "Enter" && !shiftKey) {
+  //       event.preventDefault();
+
+  //       if (!chatInputRef.current?.textContent) return;
+
+  //       const newChatMessagePayload: NewChatMessageSchemaInput = {
+  //         userId: "123",
+  //         gameId,
+  //         newChatMessage: chatInputRef.current.textContent,
+  //       };
+  //       socketIo.emit("newChatMessage", newChatMessagePayload);
+  //     }
+  //   },
+  //   [gameId, socketIo]
+  // );
+
+  if (!game || !gameData || !socketContext) return "Loading...";
+
+  const { firstUserId, secondUserId, chatMessages } = gameData;
+  const { socketIo, userId } = socketContext;
 
   return (
     <div className="flex h-4/5 gap-4">
       {/* Chessboard */}
-      <GameChessboard game={game} side="white" onUndo={() => setGame(game)} />
+      <GameChessboard
+        game={game}
+        side={firstUserId === userId ? "white" : "black"}
+        onMove={(newGamePosition) => socketIo.emit("newGamePosition", { gameId, newGamePosition })}
+      />
       {/* Chat box */}
       <div className="flex w-80 flex-col gap-4">
         <div className="text-center">Game chat</div>
@@ -95,7 +123,7 @@ export function GameRoute() {
             spellCheck="true"
             tabIndex={0}
             contentEditable
-            onKeyUp={chatKeyUpHandler}
+            // onKeyUp={chatKeyUpHandler}
           />
         </div>
       </div>

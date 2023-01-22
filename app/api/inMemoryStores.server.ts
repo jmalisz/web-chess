@@ -1,19 +1,18 @@
-export type SessionData = {
-  userId: string;
-};
+export type SessionData = string;
 
 export function createSessionStore() {
+  // Just check if exists in Map
   const sessionsStore = new Map<string, SessionData>();
 
   // Clear store every 24h to not overwhelm the server
-  // TODO: Not ideal, find better solution. Probably a no-sql db.
+  // TODO: Not ideal, find better solution. Probably a db.
   setInterval(() => sessionsStore.clear(), 24 * 60 * 60 * 1000);
 
   function findSession(sessionId: string) {
     return sessionsStore.get(sessionId);
   }
-  function saveSession(sessionId: string, sessionData: SessionData) {
-    return sessionsStore.set(sessionId, sessionData);
+  function saveSession(sessionId: string, userId: string) {
+    return sessionsStore.set(sessionId, userId);
   }
   function clearSession(sessionId: string) {
     sessionsStore.delete(sessionId);
@@ -26,17 +25,23 @@ export function createSessionStore() {
   };
 }
 
+export type ChatMessage = {
+  fromUserId: string;
+  content: string;
+};
+
 export type GameData = {
-  gameId: string;
+  firstUserId: string;
+  secondUserId?: string;
   gamePosition: string;
-  chatMessages: string[];
+  chatMessages: ChatMessage[];
 };
 
 export function createGameStore() {
   const gameStore = new Map<string, GameData>();
 
   // Clear store every 24h to not overwhelm the server
-  // TODO: Not ideal, find better solution. Probably a no-sql db.
+  // TODO: Not ideal, find better solution. Probably a db.
   setInterval(() => gameStore.clear(), 24 * 60 * 60 * 1000);
 
   function findGame(gameId: string) {

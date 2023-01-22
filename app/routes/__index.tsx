@@ -1,6 +1,6 @@
 import { Link, Outlet } from "@remix-run/react";
 
-export default function Index() {
+export function IndexLayout() {
   return (
     <div className="flex h-screen flex-col items-center">
       <header className="sticky top-0 w-full border-b border-b-gray-200">
@@ -19,3 +19,5 @@ export default function Index() {
     </div>
   );
 }
+
+export default IndexLayout;
