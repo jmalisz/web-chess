@@ -1,47 +1,20 @@
 import type { Chess, Square } from "chess.js";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { Chessboard } from "react-chessboard";
-
-const defaultGameHeader = "Game is in session...";
 
 type PossibleMovesType = Record<string, { background?: string; borderRadius?: string }>;
 
 type GameChessboardProps = {
   game: Chess;
   side: "white" | "black";
-  // onFinish?: () => void;
-  onMove?: (position: string) => void;
-  onSurrender?: () => void;
-  onUndo?: () => void;
+  onMove: (from: string, to: string) => void;
+  onSurrender: () => void;
+  onUndo: () => void;
 };
 
-export function GameChessboard({
-  game,
-  side,
-  // onFinish,
-  onMove,
-  onSurrender,
-  onUndo,
-}: GameChessboardProps) {
-  // Updating position is necessary to facilitate component rerendering
-  const [position, setPosition] = useState(game.fen());
+export function GameChessboard({ game, side, onMove, onSurrender, onUndo }: GameChessboardProps) {
   const [moveFrom, setMoveFrom] = useState("");
   const [possibleMoves, setPossibleMoves] = useState<PossibleMovesType>();
-  const [gameHeader, setGameHeader] = useState(defaultGameHeader);
-
-  useEffect(() => {
-    setPosition(game.fen());
-  }, [game]);
-
-  const getGameHeader = useCallback(() => {
-    if (game.isCheckmate()) return game.turn() === side[0] ? "Black won!" : "White won!";
-
-    if (game.isGameOver()) return "Draw!";
-
-    if (game.isCheck()) return side === "white" ? "White in check!" : "Black in check!";
-
-    return defaultGameHeader;
-  }, [game, side]);
 
   const deselectPiece = useCallback(() => {
     setMoveFrom("");
@@ -102,30 +75,29 @@ export function GameChessboard({
       }
 
       // Perform a move
-      game.move({
-        from: moveFrom,
-        to: square,
-        promotion: "q",
-      });
-      const newPosition = game.fen();
+      onMove(moveFrom, square);
       setMoveFrom("");
       setPossibleMoves(undefined);
-      setPosition(newPosition);
-      setGameHeader(getGameHeader());
-      onMove?.(newPosition);
     },
-    [moveFrom, game, side, possibleMoves, getGameHeader, onMove, deselectPiece]
+    [moveFrom, game, side, possibleMoves, onMove, deselectPiece]
   );
 
+  const getGameHeader = useCallback(() => {
+    if (game.isCheck()) return side === "white" ? "White in check!" : "Black in check!";
+
+    return "Game is in session...";
+  }, [game, side]);
+
+  // A lot of things are rerendered when new game prop will arrive
   return (
     <div className="flex grow flex-col gap-4">
-      <div className="text-center">{gameHeader}</div>
+      <div className="text-center">{getGameHeader()}</div>
       <div>
         <Chessboard
           arePiecesDraggable={false}
           boardOrientation={side}
           customSquareStyles={possibleMoves}
-          position={position}
+          position={game.fen()}
           customBoardStyle={{
             borderRadius: "4px",
             boxShadow: "0 2px 10px rgba(0, 0, 0, 0.5)",
@@ -139,24 +111,19 @@ export function GameChessboard({
           className="btn-outline btn"
           type="button"
           onClick={() => {
-            game.reset();
             deselectPiece();
-            setPosition(game.fen());
-            setGameHeader(getGameHeader());
-            onSurrender?.();
+            onSurrender();
           }}
         >
-          Reset
+          Surrender
         </button>
         <button
           className="btn-outline btn"
+          disabled={game.history().length === 0}
           type="button"
           onClick={() => {
-            game.undo();
             deselectPiece();
-            setPosition(game.fen());
-            setGameHeader(getGameHeader());
-            onUndo?.();
+            onUndo();
           }}
         >
           Undo

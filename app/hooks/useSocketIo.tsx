@@ -4,23 +4,16 @@ import type { Socket } from "socket.io-client";
 import { io } from "socket.io-client";
 import { z } from "zod";
 
-type SocketIoContextData = {
-  socketIo: Socket;
-  userId: string;
-};
-
-const SocketIoContext = createContext<SocketIoContextData | undefined>(undefined);
+const SocketIoContext = createContext<Socket | undefined>(undefined);
 
 const SESSION_ID_LS_KEY = "sessionId";
 
 const connectedDataSchema = z.object({
   sessionId: z.string(),
-  userId: z.string(),
 });
 
 export function SocketIoProvider({ children }: PropsWithChildren) {
   const [socketIo, setSocketIo] = useState<Socket>();
-  const [userId, setUserId] = useState("");
 
   useEffect(() => {
     const newSocketIo = io("http://localhost:3000", { autoConnect: false });
@@ -43,10 +36,9 @@ export function SocketIoProvider({ children }: PropsWithChildren) {
     }
     newSocketIo.connect();
     newSocketIo.on("connected", (data) => {
-      const { sessionId, userId: socketUserId } = connectedDataSchema.parse(data);
+      const { sessionId } = connectedDataSchema.parse(data);
       newSocketIo.auth = { sessionId };
       localStorage.setItem(SESSION_ID_LS_KEY, sessionId);
-      setUserId(socketUserId);
     });
 
     return () => {
@@ -54,10 +46,7 @@ export function SocketIoProvider({ children }: PropsWithChildren) {
     };
   }, []);
 
-  const contextValue = useMemo(
-    () => (socketIo ? { socketIo, userId } : undefined),
-    [socketIo, userId]
-  );
+  const contextValue = useMemo(() => socketIo ?? undefined, [socketIo]);
 
   return <SocketIoContext.Provider value={contextValue}> {children} </SocketIoContext.Provider>;
 }

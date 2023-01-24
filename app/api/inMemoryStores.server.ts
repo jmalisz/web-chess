@@ -1,4 +1,4 @@
-export type SessionData = string;
+export type SessionData = boolean;
 
 export function createSessionStore() {
   // Just check if exists in Map
@@ -11,8 +11,8 @@ export function createSessionStore() {
   function findSession(sessionId: string) {
     return sessionsStore.get(sessionId);
   }
-  function saveSession(sessionId: string, userId: string) {
-    return sessionsStore.set(sessionId, userId);
+  function saveSession(sessionId: string) {
+    return sessionsStore.set(sessionId, true);
   }
   function clearSession(sessionId: string) {
     sessionsStore.delete(sessionId);
@@ -26,14 +26,18 @@ export function createSessionStore() {
 }
 
 export type ChatMessage = {
-  fromUserId: string;
+  fromSessionId: string;
   content: string;
 };
 
 export type GameData = {
-  firstUserId: string;
-  secondUserId?: string;
-  gamePosition: string;
+  firstSessionId: string;
+  secondSessionId?: string;
+  // Used for saving game history to allow undo between sessions
+  gamePositionPgn: string;
+  // TODO: Investigate if it's truly needed
+  // Used on client
+  gamePositionFen: string;
   chatMessages: ChatMessage[];
 };
 

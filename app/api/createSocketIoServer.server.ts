@@ -9,15 +9,16 @@ import { nanoid } from "nanoid";
 import { Server } from "socket.io";
 import { z } from "zod";
 
+import { createCallbackErrorWrapper } from "./errorHandler";
 import type { ChatMessage, GameData } from "./inMemoryStores.server";
 import { createGameStore, createSessionStore } from "./inMemoryStores.server";
 
 declare module "socket.io" {
   interface Socket {
     sessionId: string;
-    userId: string;
     gameId: string;
-    gamePosition: string;
+    gamePositionPgn: string;
+    gamePositionFen: string;
     chatMessages: ChatMessage[];
   }
 }
@@ -32,7 +33,17 @@ const createGameRoomSchema = z.object({
 
 const newGamePositionSchema = z.object({
   gameId: z.string(),
-  newGamePosition: z.string(),
+  from: z.string(),
+  to: z.string(),
+});
+
+const undoAskSchema = z.object({
+  gameId: z.string(),
+});
+
+const undoAnswerSchema = z.object({
+  gameId: z.string(),
+  answer: z.boolean(),
 });
 // const newChatMessageSchema = z.object({
 //   userId: z.string(),
@@ -46,7 +57,6 @@ export function createSocketIoServer(app: Express) {
   const gameStore = createGameStore();
   const httpServer = createServer(app);
   const socketIoServer = new Server(httpServer);
-  const chess = new Chess();
 
   socketIoServer.use((socketIo, next) => {
     const { sessionId } = initialHandshakeSchema.parse(socketIo.handshake.auth);
@@ -56,23 +66,31 @@ export function createSocketIoServer(app: Express) {
 
       if (userId) {
         socketIo.sessionId = sessionId;
-        socketIo.userId = userId;
 
         return next();
       }
     }
 
     socketIo.sessionId = nanoid();
-    socketIo.userId = nanoid();
 
     next();
   });
 
   socketIoServer.on("connection", (socketIo) => {
     try {
-      const { sessionId, userId } = socketIo;
-      sessionStore.saveSession(sessionId, userId);
-      socketIo.emit("connected", { sessionId, userId });
+      const { sessionId } = socketIo;
+      const chess = new Chess();
+      const callbackErrorWrapper = createCallbackErrorWrapper(socketIo);
+
+      sessionStore.saveSession(sessionId);
+      socketIo.emit("connected", { sessionId });
+
+      // Remove private data from GameData
+      const pruneSessionData = ({ gamePositionFen, firstSessionId, chatMessages }: GameData) => ({
+        gamePositionFen,
+        side: firstSessionId === sessionId ? "white" : "black",
+        chatMessages,
+      });
 
       // Provides socket logs on client
       if (process.env.NODE_ENV !== "production") {
@@ -84,51 +102,133 @@ export function createSocketIoServer(app: Express) {
         console.log("Socket created:", sessionId);
       }
 
-      socketIo.on("enterGameRoom", async (data) => {
-        const { gameId } = createGameRoomSchema.parse(data);
-        await socketIo.join(gameId);
+      socketIo.on(
+        "enterGameRoom",
+        callbackErrorWrapper(async (data) => {
+          const { gameId } = createGameRoomSchema.parse(data);
+          await socketIo.join(gameId);
 
-        const savedGameData = gameStore.findGame(gameId);
+          const savedGameData = gameStore.findGame(gameId);
 
-        if (savedGameData) {
-          if (userId === savedGameData.firstUserId || userId === savedGameData.secondUserId) {
-            socketIo.emit("enterGameRoom", savedGameData);
-            // eslint-disable-next-line unicorn/no-negated-condition
-          } else if (!savedGameData.secondUserId) {
-            savedGameData.secondUserId = userId;
-            gameStore.saveGame(gameId, savedGameData);
-            socketIo.emit("enterGameRoom", savedGameData);
-          } else {
-            // Disconnect client for trying to access unauthorized data
-            socketIo.disconnect();
+          if (savedGameData) {
+            if (
+              sessionId === savedGameData.firstSessionId ||
+              sessionId === savedGameData.secondSessionId
+            ) {
+              chess.loadPgn(savedGameData.gamePositionPgn);
+              socketIo.emit("enterGameRoom", pruneSessionData(savedGameData));
+              // eslint-disable-next-line unicorn/no-negated-condition
+            } else if (!savedGameData.secondSessionId) {
+              // Second player is added to the room and game can be started
+              savedGameData.secondSessionId = sessionId;
+              gameStore.saveGame(gameId, savedGameData);
+              socketIo.emit("enterGameRoom", pruneSessionData(savedGameData));
+            } else {
+              // Disconnect client for trying to access unauthorized data
+              socketIo.disconnect();
+            }
+
+            return;
           }
 
-          return;
-        }
+          const newGameData: GameData = {
+            firstSessionId: sessionId,
+            gamePositionPgn: chess.pgn(),
+            gamePositionFen: chess.fen(),
+            chatMessages: [],
+          };
 
-        const newGameData: GameData = {
-          firstUserId: userId,
-          gamePosition: chess.fen(),
-          chatMessages: [],
-        };
+          gameStore.saveGame(gameId, newGameData);
+          socketIoServer.to(gameId).emit("enterGameRoom", pruneSessionData(newGameData));
+        })
+      );
+      socketIo.on(
+        "newGamePosition",
+        callbackErrorWrapper((data) => {
+          const { gameId, from, to } = newGamePositionSchema.parse(data);
+          const savedGameData = gameStore.findGame(gameId);
 
-        gameStore.saveGame(gameId, newGameData);
-        socketIo.emit("enterGameRoom", newGameData);
-      });
+          if (!savedGameData) throw new Error("Game not found in newGamePosition");
 
-      // TODO: Add server game history validation
-      socketIo.on("newGamePosition", (data) => {
-        const { gameId, newGamePosition } = newGamePositionSchema.parse(data);
-        const game = gameStore.findGame(gameId);
+          // Chess engine needs to be reloaded every move to make sure that neither of players has stale data
+          chess.loadPgn(savedGameData.gamePositionPgn);
+          // This should error if player has tried to play moves that are impossible from his position
+          // Promotion to queen is for simplicity
+          chess.move({ from, to, promotion: "q" });
+          const gamePositionFen = chess.fen();
 
-        if (!game) {
-          socketIo.disconnect(true);
-          return;
-        }
+          gameStore.saveGame(gameId, {
+            ...savedGameData,
+            gamePositionPgn: chess.pgn(),
+            gamePositionFen,
+          });
+          socketIoServer.to(gameId).emit("newGamePosition", { gamePositionFen });
+        })
+      );
+      socketIo.on(
+        "surrender",
+        callbackErrorWrapper((data) => {
+          const { gameId } = undoAskSchema.parse(data);
+          const savedGameData = gameStore.findGame(gameId);
 
-        gameStore.saveGame(gameId, { ...game, gamePosition: newGamePosition });
-        socketIo.to(gameId).emit("newGamePosition", { newGamePosition });
-      });
+          if (!savedGameData) throw new Error("Game not found in newGamePosition");
+          if (!savedGameData.secondSessionId)
+            throw new Error("Invalid game state in newGamePosition");
+
+          chess.reset();
+
+          gameStore.saveGame(gameId, {
+            ...savedGameData,
+            gamePositionPgn: chess.pgn(),
+            gamePositionFen: chess.fen(),
+          });
+
+          socketIoServer
+            .to(
+              sessionId === savedGameData.firstSessionId
+                ? savedGameData.secondSessionId
+                : savedGameData.firstSessionId
+            )
+            .emit("victory", "victory");
+          console.log(
+            sessionId === savedGameData.firstSessionId
+              ? savedGameData.secondSessionId
+              : savedGameData.firstSessionId
+          );
+          socketIoServer.to(sessionId).emit("defeat", "defeat");
+          socketIoServer.to(gameId).emit("newGamePosition", { gamePositionFen: chess.fen() });
+        })
+      );
+      socketIo.on(
+        "undoAsk",
+        callbackErrorWrapper((data) => {
+          const { gameId } = undoAskSchema.parse(data);
+
+          socketIo.to(gameId).emit("undoAsk");
+        })
+      );
+      socketIo.on(
+        "undoAnswer",
+        callbackErrorWrapper((data) => {
+          const { gameId, answer } = undoAnswerSchema.parse(data);
+          const savedGameData = gameStore.findGame(gameId);
+
+          if (!savedGameData) throw new Error("Game not found in undoAnswer");
+
+          if (answer && chess.history().length > 0) {
+            chess.loadPgn(savedGameData.gamePositionPgn);
+            chess.undo();
+            const gamePositionFen = chess.fen();
+
+            gameStore.saveGame(gameId, {
+              ...savedGameData,
+              gamePositionPgn: chess.pgn(),
+              gamePositionFen,
+            });
+            socketIoServer.to(gameId).emit("newGamePosition", { gamePositionFen });
+          }
+        })
+      );
 
       // socketIo.on("newChatMessage", (data) => {
       //   const { userId, gameId, newChatMessage } = newChatMessageSchema.parse(data);
@@ -144,7 +244,8 @@ export function createSocketIoServer(app: Express) {
       //   socketIo.to(gameId).emit("newChatMessage", { userId, newChatMessage });
       // });
     } catch (error) {
-      socketIo.emit("disconnecting", error);
+      // eslint-disable-next-line no-console
+      console.error(error);
       socketIo.disconnect(true);
     }
   });

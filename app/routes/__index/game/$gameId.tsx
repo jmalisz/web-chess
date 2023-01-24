@@ -6,9 +6,52 @@ import { z } from "zod";
 
 // import sanitizeHtml from "sanitize-html";
 import { GameChessboard } from "~/components/Chessboard";
+import { useDialogContext } from "~/hooks/useDialog";
 import { useSocketIo } from "~/hooks/useSocketIo";
-import type { SocketIoSessionDataSchema } from "~/utils/models";
-import { socketIoGameDataSchema } from "~/utils/models";
+
+type GameFinishedDialogProps = {
+  title: string;
+  onOk: () => void;
+};
+
+function GameFinishedDialog({ title, onOk }: GameFinishedDialogProps) {
+  return (
+    <div className="modal visible">
+      <div className="modal-box">
+        <h3 className="text-lg font-bold">{title}</h3>
+        <div className="modal-action justify-evenly">
+          <button className="btn-primary btn" type="button" onClick={onOk}>
+            Ok
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+type UndoAskDialogProps = {
+  onNo: () => void;
+  onYes: () => void;
+};
+
+function UndoAskDialog({ onNo, onYes }: UndoAskDialogProps) {
+  return (
+    <div className="modal visible">
+      <div className="modal-box">
+        <h3 className="text-lg font-bold">Your opponent is asking to undo his last move</h3>
+        <p className="py-4">Do you grant the undo?</p>
+        <div className="modal-action justify-evenly">
+          <button className="btn-primary btn" type="button" onClick={onNo}>
+            No
+          </button>
+          <button className="btn-primary btn" type="button" onClick={onYes}>
+            Yes
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // function parseChatMessage(chatMessage: string) {
 //   const lineBreak = "<br/>";
@@ -32,39 +75,77 @@ import { socketIoGameDataSchema } from "~/utils/models";
 
 //   return sanitizeHtml(chatMessageWithBreaks);
 // }
+const socketIoGameDataSchema = z.object({
+  gamePositionFen: z.string(),
+  side: z.enum(["white", "black"]),
+  chatMessages: z.array(
+    z.object({
+      fromUserId: z.string(),
+      content: z.string(),
+    })
+  ),
+});
+type SocketIoGameDataSchemaType = z.infer<typeof socketIoGameDataSchema>;
+
+const newGamePositionEventSchema = z.object({
+  gamePositionFen: z.string(),
+});
 
 export function GameRoute() {
   const { gameId } = useParams();
   if (!gameId) throw new Error("This shouldn't be matched by router");
 
-  const socketContext = useSocketIo();
+  const socketIo = useSocketIo();
+  const { setDialog } = useDialogContext();
 
   const chatInputRef = useRef<HTMLDivElement>(null);
 
-  const [game, setGame] = useState<Chess>();
-  const [gameData, setGameData] = useState<SocketIoSessionDataSchema>();
+  const [game, setGame] = useState<Chess>(new Chess());
+  const [gameData, setGameData] = useState<SocketIoGameDataSchemaType>();
 
   useEffect(() => {
-    if (!socketContext) return;
-
-    const { socketIo } = socketContext;
+    if (!socketIo) return;
 
     socketIo.emit("enterGameRoom", { gameId });
+
     socketIo.on("enterGameRoom", (data) => {
       const newGameData = socketIoGameDataSchema.parse(data);
       setGameData(newGameData);
-      setGame(new Chess(newGameData.gamePosition));
+      setGame(new Chess(newGameData.gamePositionFen));
     });
     socketIo.on("newGamePosition", (data) => {
-      const { newGamePosition } = z.object({ newGamePosition: z.string() }).parse(data);
+      const { gamePositionFen } = newGamePositionEventSchema.parse(data);
       setGameData((prev) => {
         if (!prev) throw new Error("Unexpected lack of gameData on newGamePosition");
 
-        return { ...prev, gamePosition: newGamePosition };
+        return { ...prev, gamePositionFen };
       });
-      setGame(new Chess(newGamePosition));
+      setGame(new Chess(gamePositionFen));
     });
-  }, [gameId, socketContext]);
+    socketIo.on("victory", () => {
+      setDialog(<GameFinishedDialog title="You won!" onOk={() => setDialog(undefined)} />);
+    });
+    socketIo.on("defeat", () => {
+      setDialog(<GameFinishedDialog title="You lost!" onOk={() => setDialog(undefined)} />);
+    });
+    socketIo.on("draw", () => {
+      setDialog(<GameFinishedDialog title="A draw!" onOk={() => setDialog(undefined)} />);
+    });
+    socketIo.on("undoAsk", () => {
+      setDialog(
+        <UndoAskDialog
+          onNo={() => {
+            socketIo.emit("undoAnswer", { gameId, answer: false });
+            setDialog(undefined);
+          }}
+          onYes={() => {
+            socketIo.emit("undoAnswer", { gameId, answer: true });
+            setDialog(undefined);
+          }}
+        />
+      );
+    });
+  }, [gameId, setDialog, socketIo]);
 
   // const chatKeyUpHandler = useCallback(
   //   (event: KeyboardEvent<HTMLDivElement>) => {
@@ -87,18 +168,19 @@ export function GameRoute() {
   //   [gameId, socketIo]
   // );
 
-  if (!game || !gameData || !socketContext) return "Loading...";
+  if (!game || !gameData || !socketIo) return "Loading...";
 
-  const { firstUserId, secondUserId, chatMessages } = gameData;
-  const { socketIo, userId } = socketContext;
+  const { side, chatMessages } = gameData;
 
   return (
     <div className="flex h-4/5 gap-4">
       {/* Chessboard */}
       <GameChessboard
         game={game}
-        side={firstUserId === userId ? "white" : "black"}
-        onMove={(newGamePosition) => socketIo.emit("newGamePosition", { gameId, newGamePosition })}
+        side={side}
+        onMove={(from, to) => socketIo.emit("newGamePosition", { gameId, from, to })}
+        onSurrender={() => socketIo.emit("surrender", { gameId })}
+        onUndo={() => socketIo.emit("undoAsk", { gameId })}
       />
       {/* Chat box */}
       <div className="flex w-80 flex-col gap-4">

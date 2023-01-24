@@ -1,6 +1,7 @@
 import type { LinksFunction, MetaFunction } from "@remix-run/node";
 import { Links, LiveReload, Meta, Outlet, Scripts, ScrollRestoration } from "@remix-run/react";
 
+import { DialogContextProvider } from "./hooks/useDialog";
 import { SocketIoProvider } from "./hooks/useSocketIo";
 import styles from "./styles/app.css";
 
@@ -22,7 +23,9 @@ export default function App() {
       </head>
       <body>
         <SocketIoProvider>
-          <Outlet />
+          <DialogContextProvider>
+            <Outlet />
+          </DialogContextProvider>
         </SocketIoProvider>
         <ScrollRestoration />
         <Scripts />
