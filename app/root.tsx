@@ -1,9 +1,38 @@
 import type { LinksFunction, MetaFunction } from "@remix-run/node";
-import { Links, LiveReload, Meta, Outlet, Scripts, ScrollRestoration } from "@remix-run/react";
+import { json } from "@remix-run/node";
+import {
+  Links,
+  LiveReload,
+  Meta,
+  Outlet,
+  Scripts,
+  ScrollRestoration,
+  useLoaderData,
+} from "@remix-run/react";
 
 import { DialogContextProvider } from "./hooks/useDialog";
 import { SocketIoProvider } from "./hooks/useSocketIo";
 import styles from "./styles/app.css";
+
+// https://remix.run/docs/en/v1/guides/envvars
+declare global {
+  interface Window {
+    ENV: {
+      NODE_ENV: "development" | "production" | "test";
+      SOCKET_IO_URL?: string;
+    };
+  }
+}
+
+// eslint-disable-next-line @typescript-eslint/require-await
+export async function loader() {
+  return json({
+    ENV: {
+      NODE_ENV: process.env.NODE_ENV,
+      SOCKET_IO_URL: process.env.SOCKET_IO_URL,
+    },
+  });
+}
 
 export const links: LinksFunction = () => [{ rel: "stylesheet", href: styles }];
 
@@ -15,6 +44,8 @@ export const meta: MetaFunction = () => ({
 });
 
 export default function App() {
+  const data = useLoaderData<typeof loader>();
+
   return (
     <html lang="en">
       <head>
@@ -28,6 +59,12 @@ export default function App() {
           </DialogContextProvider>
         </SocketIoProvider>
         <ScrollRestoration />
+        <script
+          // eslint-disable-next-line react/no-danger
+          dangerouslySetInnerHTML={{
+            __html: `window.ENV = ${JSON.stringify(data.ENV)}`,
+          }}
+        />
         <Scripts />
         <LiveReload />
       </body>

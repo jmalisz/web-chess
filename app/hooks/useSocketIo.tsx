@@ -16,7 +16,9 @@ export function SocketIoProvider({ children }: PropsWithChildren) {
   const [socketIo, setSocketIo] = useState<Socket>();
 
   useEffect(() => {
-    const newSocketIo = io("http://localhost:3000", { autoConnect: false });
+    if (!window.ENV.SOCKET_IO_URL) throw new Error("Missing SOCKET_IO_URL env");
+
+    const newSocketIo = io(window.ENV.SOCKET_IO_URL, { autoConnect: false });
     setSocketIo(newSocketIo);
 
     // Provides socket logs on client
