@@ -119,7 +119,7 @@ export function GameChessboard({ game, side, onMove, onSurrender, onUndo }: Game
         </button>
         <button
           className="btn-outline btn"
-          disabled={game.turn() === side[0]}
+          disabled={game.turn() === side[0] || game.pgn().length === 0}
           type="button"
           onClick={() => {
             deselectPiece();

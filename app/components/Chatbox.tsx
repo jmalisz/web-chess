@@ -1,5 +1,6 @@
+import { debounce } from "lodash";
 import type { KeyboardEvent } from "react";
-import { useCallback, useLayoutEffect, useRef } from "react";
+import { useCallback, useLayoutEffect, useMemo, useRef } from "react";
 
 type ChatboxProps = {
   chatMessages: {
@@ -34,6 +35,11 @@ export function Chatbox({ chatMessages, onNewChatMessage }: ChatboxProps) {
     [onNewChatMessage]
   );
 
+  const debouncedChatKeyUpHandler = useMemo(
+    () => debounce(chatKeyUpHandler, 100),
+    [chatKeyUpHandler]
+  );
+
   return (
     <div className="flex w-80 flex-col gap-4">
       <div className="text-center">Game chat</div>
@@ -61,7 +67,7 @@ export function Chatbox({ chatMessages, onNewChatMessage }: ChatboxProps) {
           spellCheck="true"
           tabIndex={0}
           contentEditable
-          onKeyUp={chatKeyUpHandler}
+          onKeyUp={debouncedChatKeyUpHandler}
         />
       </div>
     </div>

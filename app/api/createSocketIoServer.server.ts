@@ -91,9 +91,13 @@ export function createSocketIoServer(app: Express) {
       socketIo.emit("connected", { sessionId });
 
       // Remove private data from GameData
-      const pruneSessionData = ({ gamePositionFen, firstSessionId, chatMessages }: GameData) => ({
+      const pruneSessionData = (
+        { gamePositionFen, secondSessionId, chatMessages }: GameData,
+        side: "white" | "black"
+      ) => ({
         gamePositionFen,
-        side: firstSessionId === sessionId ? "white" : "black",
+        side,
+        isOpponentMissing: !secondSessionId,
         chatMessages: chatMessages.map(({ id, fromSessionId, content }) => ({
           id,
           isYour: sessionId === fromSessionId,
@@ -125,13 +129,22 @@ export function createSocketIoServer(app: Express) {
               sessionId === savedGameData.secondSessionId
             ) {
               chess.loadPgn(savedGameData.gamePositionPgn);
-              socketIo.emit("enterGameRoom", pruneSessionData(savedGameData));
+              socketIo.emit(
+                "enterGameRoom",
+                pruneSessionData(
+                  savedGameData,
+                  savedGameData.firstSessionId === sessionId ? "white" : "black"
+                )
+              );
               // eslint-disable-next-line unicorn/no-negated-condition
             } else if (!savedGameData.secondSessionId) {
               // Second player is added to the room and game can be started
               savedGameData.secondSessionId = sessionId;
               gameStore.saveGame(gameId, savedGameData);
-              socketIo.emit("enterGameRoom", pruneSessionData(savedGameData));
+              socketIo
+                .to(savedGameData.firstSessionId)
+                .emit("enterGameRoom", pruneSessionData(savedGameData, "white"));
+              socketIo.emit("enterGameRoom", pruneSessionData(savedGameData, "black"));
             } else {
               // Disconnect client for trying to access unauthorized data
               socketIo.disconnect();
@@ -148,7 +161,7 @@ export function createSocketIoServer(app: Express) {
           };
 
           gameStore.saveGame(gameId, newGameData);
-          socketIoServer.to(gameId).emit("enterGameRoom", pruneSessionData(newGameData));
+          socketIo.emit("enterGameRoom", pruneSessionData(newGameData, "white"));
         })
       );
       socketIo.on(

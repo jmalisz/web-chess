@@ -1,12 +1,40 @@
 import { useParams } from "@remix-run/react";
 import { Chess } from "chess.js";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { z } from "zod";
 
 import { Chatbox } from "~/components/Chatbox";
 import { GameChessboard } from "~/components/Chessboard";
 import { useDialogContext } from "~/hooks/useDialog";
 import { useSocketIo } from "~/hooks/useSocketIo";
+
+const DEFAULT_BUTTON_TEXT = "Copy link";
+
+function OpponentMissingDialog() {
+  const [buttonText, setButtonText] = useState(DEFAULT_BUTTON_TEXT);
+
+  const copyLink = useCallback(async () => {
+    await navigator.clipboard.writeText(window.location.href);
+    setButtonText("Copied!");
+    setTimeout(() => setButtonText(DEFAULT_BUTTON_TEXT), 1000);
+  }, []);
+
+  return (
+    <div className="modal visible">
+      <div className="modal-box">
+        <h3 className="text-center text-lg font-bold">Opponent is missing</h3>
+        <p>
+          It seems that you don&apos;t have an opponent. Copy the link below to invite somebody!
+        </p>
+        <div className="modal-action justify-evenly">
+          <button className="btn-primary btn" type="button" onClick={copyLink}>
+            {buttonText}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 type GameFinishedDialogProps = {
   title: string;
@@ -55,6 +83,7 @@ function UndoAskDialog({ onNo, onYes }: UndoAskDialogProps) {
 const enterGameRoomEventSchema = z.object({
   gamePositionFen: z.string(),
   side: z.enum(["white", "black"]),
+  isOpponentMissing: z.boolean(),
   chatMessages: z.array(
     z.object({
       id: z.string(),
@@ -63,7 +92,10 @@ const enterGameRoomEventSchema = z.object({
     })
   ),
 });
-type GameDataType = Omit<z.infer<typeof enterGameRoomEventSchema>, "chatMessages">;
+type GameDataType = Omit<
+  z.infer<typeof enterGameRoomEventSchema>,
+  "chatMessages" | "isOpponentMissing"
+>;
 
 const newGamePositionEventSchema = enterGameRoomEventSchema.pick({ gamePositionFen: true });
 
@@ -90,12 +122,19 @@ export function GameRoute() {
       const {
         gamePositionFen,
         side,
+        isOpponentMissing,
         chatMessages: newChatMessages,
       } = enterGameRoomEventSchema.parse(data);
 
       setGame(new Chess(gamePositionFen));
       setGameData({ gamePositionFen, side });
       setChatMessages(newChatMessages);
+
+      if (isOpponentMissing) {
+        setDialog(<OpponentMissingDialog />);
+      } else {
+        setDialog(undefined);
+      }
     });
     socketIo.on("newGamePosition", (data) => {
       const { gamePositionFen } = newGamePositionEventSchema.parse(data);
