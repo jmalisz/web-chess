@@ -39,14 +39,7 @@ export function IndexLayout() {
     if (!socketIo) return;
 
     socketIo.on("disconnect", () => {
-      setDialog(
-        <DisconnectedDialog
-          onGoToHome={() => {
-            socketIo.connect();
-            setDialog(undefined);
-          }}
-        />
-      );
+      setDialog(<DisconnectedDialog onGoToHome={() => socketIo.connect()} />);
     });
   }, [setDialog, socketIo]);
 

@@ -23,11 +23,11 @@ export function IndexRoute() {
             Play with another person
           </button>
         </Link>
-        <Link to={`/game/${newGameId}`}>
-          <button className="btn-primary btn" type="button">
+        <div className="tooltip tooltip-bottom tooltip-info" data-tip="Not implemented :(">
+          <button className="btn-primary btn" type="button" disabled>
             Play with computer
           </button>
-        </Link>
+        </div>
       </div>
     </div>
   );

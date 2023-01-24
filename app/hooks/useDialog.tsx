@@ -1,5 +1,6 @@
+import { useLocation } from "@remix-run/react";
 import type { PropsWithChildren, ReactElement } from "react";
-import { createContext, useContext, useMemo, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useState } from "react";
 
 type DialogContextType = {
   dialog: ReactElement | undefined;
@@ -9,9 +10,16 @@ type DialogContextType = {
 const DialogContext = createContext<DialogContextType>({ dialog: undefined, setDialog: () => {} });
 
 export function DialogContextProvider({ children }: PropsWithChildren) {
+  const location = useLocation();
+
   const [dialog, setDialog] = useState<ReactElement>();
 
   const dialogValue = useMemo(() => ({ dialog, setDialog }), [dialog]);
+
+  // Remove dialogs when changing pages
+  useEffect(() => {
+    setDialog(undefined);
+  }, [location.pathname]);
 
   return (
     <DialogContext.Provider value={dialogValue}>
