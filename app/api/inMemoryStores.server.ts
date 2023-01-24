@@ -1,5 +1,6 @@
 export type SessionData = boolean;
 
+// Private session token that shouldn't be exposed to other users
 export function createSessionStore() {
   // Just check if exists in Map
   const sessionsStore = new Map<string, SessionData>();
@@ -26,6 +27,7 @@ export function createSessionStore() {
 }
 
 export type ChatMessage = {
+  id: string;
   fromSessionId: string;
   content: string;
 };

@@ -37,6 +37,10 @@ const newGamePositionSchema = z.object({
   to: z.string(),
 });
 
+const surrenderSchema = z.object({
+  gameId: z.string(),
+});
+
 const undoAskSchema = z.object({
   gameId: z.string(),
 });
@@ -45,12 +49,11 @@ const undoAnswerSchema = z.object({
   gameId: z.string(),
   answer: z.boolean(),
 });
-// const newChatMessageSchema = z.object({
-//   userId: z.string(),
-//   newChatMessage: z.string(),
-// });
-// export type NewChatMessageSchemaInput = z.infer<typeof newChatMessageSchema>;
-// export type NewChatMessageSchemaOutput = Omit<z.infer<typeof newChatMessageSchema>, "gameId">;
+
+const newChatMessageSchema = z.object({
+  gameId: z.string(),
+  newChatMessage: z.string(),
+});
 
 export function createSocketIoServer(app: Express) {
   const sessionStore = createSessionStore();
@@ -62,9 +65,9 @@ export function createSocketIoServer(app: Express) {
     const { sessionId } = initialHandshakeSchema.parse(socketIo.handshake.auth);
 
     if (sessionId) {
-      const userId = sessionStore.findSession(sessionId);
+      const sessionExists = sessionStore.findSession(sessionId);
 
-      if (userId) {
+      if (sessionExists) {
         socketIo.sessionId = sessionId;
 
         return next();
@@ -76,9 +79,11 @@ export function createSocketIoServer(app: Express) {
     next();
   });
 
-  socketIoServer.on("connection", (socketIo) => {
+  socketIoServer.on("connection", async (socketIo) => {
     try {
       const { sessionId } = socketIo;
+      await socketIo.join(sessionId);
+
       const chess = new Chess();
       const callbackErrorWrapper = createCallbackErrorWrapper(socketIo);
 
@@ -89,7 +94,11 @@ export function createSocketIoServer(app: Express) {
       const pruneSessionData = ({ gamePositionFen, firstSessionId, chatMessages }: GameData) => ({
         gamePositionFen,
         side: firstSessionId === sessionId ? "white" : "black",
-        chatMessages,
+        chatMessages: chatMessages.map(({ id, fromSessionId, content }) => ({
+          id,
+          isYour: sessionId === fromSessionId,
+          content,
+        })),
       });
 
       // Provides socket logs on client
@@ -155,8 +164,17 @@ export function createSocketIoServer(app: Express) {
           // This should error if player has tried to play moves that are impossible from his position
           // Promotion to queen is for simplicity
           chess.move({ from, to, promotion: "q" });
-          const gamePositionFen = chess.fen();
 
+          if (chess.isCheckmate()) {
+            chess.reset();
+            socketIoServer.to(gameId).except(sessionId).emit("victory");
+            socketIoServer.to(sessionId).emit("defeat");
+          } else if (chess.isGameOver()) {
+            chess.reset();
+            socketIoServer.to(gameId).emit("draw");
+          }
+
+          const gamePositionFen = chess.fen();
           gameStore.saveGame(gameId, {
             ...savedGameData,
             gamePositionPgn: chess.pgn(),
@@ -168,7 +186,7 @@ export function createSocketIoServer(app: Express) {
       socketIo.on(
         "surrender",
         callbackErrorWrapper((data) => {
-          const { gameId } = undoAskSchema.parse(data);
+          const { gameId } = surrenderSchema.parse(data);
           const savedGameData = gameStore.findGame(gameId);
 
           if (!savedGameData) throw new Error("Game not found in newGamePosition");
@@ -183,19 +201,8 @@ export function createSocketIoServer(app: Express) {
             gamePositionFen: chess.fen(),
           });
 
-          socketIoServer
-            .to(
-              sessionId === savedGameData.firstSessionId
-                ? savedGameData.secondSessionId
-                : savedGameData.firstSessionId
-            )
-            .emit("victory", "victory");
-          console.log(
-            sessionId === savedGameData.firstSessionId
-              ? savedGameData.secondSessionId
-              : savedGameData.firstSessionId
-          );
-          socketIoServer.to(sessionId).emit("defeat", "defeat");
+          socketIoServer.to(gameId).except(sessionId).emit("victory");
+          socketIoServer.to(sessionId).emit("defeat");
           socketIoServer.to(gameId).emit("newGamePosition", { gamePositionFen: chess.fen() });
         })
       );
@@ -229,20 +236,30 @@ export function createSocketIoServer(app: Express) {
           }
         })
       );
+      socketIo.on("newChatMessage", (data) => {
+        const { gameId, newChatMessage } = newChatMessageSchema.parse(data);
+        const savedGameData = gameStore.findGame(gameId);
 
-      // socketIo.on("newChatMessage", (data) => {
-      //   const { userId, gameId, newChatMessage } = newChatMessageSchema.parse(data);
-      //   const session = sessionStore.findSession(sessionId);
+        if (!savedGameData) throw new Error("Game not found in newChatMessage");
 
-      //   if (!session) throw new Error(`Session ${sessionId} not found in newChatMessage event`);
-
-      //   if (session.gameId !== gameId) {
-      //     session.chatMessages = [];
-      //   }
-      //   session.chatMessages.push(newChatMessage);
-      //   sessionStore.saveSession(sessionId, { ...session, gameId });
-      //   socketIo.to(gameId).emit("newChatMessage", { userId, newChatMessage });
-      // });
+        const savedNewChatMessage = {
+          id: nanoid(),
+          fromSessionId: sessionId,
+          content: newChatMessage,
+        };
+        savedGameData.chatMessages.push(savedNewChatMessage);
+        gameStore.saveGame(gameId, savedGameData);
+        socketIoServer.to(sessionId).emit("newChatMessage", {
+          id: savedNewChatMessage.id,
+          isYour: true,
+          content: newChatMessage,
+        });
+        socketIoServer.to(gameId).except(sessionId).emit("newChatMessage", {
+          id: savedNewChatMessage.id,
+          isYour: false,
+          content: newChatMessage,
+        });
+      });
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error(error);

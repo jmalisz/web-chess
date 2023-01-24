@@ -11,8 +11,6 @@ const DialogContext = createContext<DialogContextType>({ dialog: undefined, setD
 export function DialogContextProvider({ children }: PropsWithChildren) {
   const [dialog, setDialog] = useState<ReactElement>();
 
-  console.log(dialog);
-
   const dialogValue = useMemo(() => ({ dialog, setDialog }), [dialog]);
 
   return (

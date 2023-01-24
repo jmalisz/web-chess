@@ -3,7 +3,7 @@ import { Link, Outlet } from "@remix-run/react";
 export function IndexLayout() {
   return (
     <div className="flex h-screen flex-col items-center">
-      <header className="sticky top-0 w-full border-b border-b-gray-200">
+      <header className="sticky top-0 z-10 w-full border-b border-b-gray-200 bg-base-100">
         <div className="m-auto max-w-5xl p-4">
           <Link to="/">
             <h1 className="text-3xl text-primary focus:text-primary-focus">Web-Chess</h1>

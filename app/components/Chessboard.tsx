@@ -83,10 +83,10 @@ export function GameChessboard({ game, side, onMove, onSurrender, onUndo }: Game
   );
 
   const getGameHeader = useCallback(() => {
-    if (game.isCheck()) return side === "white" ? "White in check!" : "Black in check!";
+    if (game.isCheck()) return game.turn() === "w" ? "White in check!" : "Black in check!";
 
     return "Game is in session...";
-  }, [game, side]);
+  }, [game]);
 
   // A lot of things are rerendered when new game prop will arrive
   return (
@@ -119,7 +119,7 @@ export function GameChessboard({ game, side, onMove, onSurrender, onUndo }: Game
         </button>
         <button
           className="btn-outline btn"
-          disabled={game.history().length === 0}
+          disabled={game.turn() === side[0]}
           type="button"
           onClick={() => {
             deselectPiece();
