@@ -34,13 +34,17 @@ export async function loader() {
   });
 }
 
-export const links: LinksFunction = () => [{ rel: "stylesheet", href: styles }];
+export const links: LinksFunction = () => [
+  { rel: "icon", href: "/favicon.ico", type: "image/png" },
+  { rel: "stylesheet", href: styles },
+];
 
 export const meta: MetaFunction = () => ({
   // eslint-disable-next-line unicorn/text-encoding-identifier-case
   charset: "utf-8",
-  title: "New Remix App",
+  title: "Web-Chess",
   viewport: "width=device-width,initial-scale=1",
+  description: "Simple web client for playing chess",
 });
 
 export default function App() {
