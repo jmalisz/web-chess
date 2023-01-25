@@ -19,6 +19,13 @@ export function Chatbox({ chatMessages, onNewChatMessage }: ChatboxProps) {
     endChatRef.current?.scrollIntoView();
   }, [chatMessages]);
 
+  const triggerSend = useCallback(() => {
+    if (!chatInputRef.current?.textContent) return;
+
+    onNewChatMessage(chatInputRef.current.textContent);
+    chatInputRef.current.textContent = "";
+  }, [onNewChatMessage]);
+
   const chatKeyUpHandler = useCallback(
     (event: KeyboardEvent<HTMLDivElement>) => {
       const { key, shiftKey } = event;
@@ -26,13 +33,10 @@ export function Chatbox({ chatMessages, onNewChatMessage }: ChatboxProps) {
       if (key === "Enter" && !shiftKey) {
         event.preventDefault();
 
-        if (!chatInputRef.current?.textContent) return;
-
-        onNewChatMessage(chatInputRef.current.textContent);
-        chatInputRef.current.textContent = "";
+        triggerSend();
       }
     },
-    [onNewChatMessage]
+    [triggerSend]
   );
 
   const debouncedChatKeyUpHandler = useMemo(
@@ -41,10 +45,10 @@ export function Chatbox({ chatMessages, onNewChatMessage }: ChatboxProps) {
   );
 
   return (
-    <div className="flex w-80 flex-col gap-4">
+    <div className="flex flex-col gap-4 md:w-[30%]">
       <div className="text-center">Game chat</div>
-      <div className="flex h-[41rem] max-h-[41rem] flex-col gap-4 rounded-lg border border-base-content p-4">
-        <div className="flex h-4/5 flex-col gap-2 overflow-auto">
+      <div className="flex h-full max-h-[80vh] flex-col gap-4 rounded-lg border border-base-content p-4">
+        <div className="flex h-40 flex-col gap-2 overflow-auto md:h-[41rem]">
           {chatMessages.map(({ id, isYour, content }) =>
             isYour ? (
               <div key={id} className="chat chat-end whitespace-pre-wrap break-words">
@@ -61,7 +65,7 @@ export function Chatbox({ chatMessages, onNewChatMessage }: ChatboxProps) {
         <div
           ref={chatInputRef}
           aria-label="Message input"
-          className="input-bordered input h-1/5 overflow-auto whitespace-pre-wrap break-words"
+          className="input-bordered input overflow-auto whitespace-pre-wrap break-words md:h-1/5"
           data-lexical-editor="true"
           role="textbox"
           spellCheck="true"
@@ -69,6 +73,9 @@ export function Chatbox({ chatMessages, onNewChatMessage }: ChatboxProps) {
           contentEditable
           onKeyUp={debouncedChatKeyUpHandler}
         />
+        <button className="btn-ghost btn-sm btn" type="button" onClick={triggerSend}>
+          Send
+        </button>
       </div>
     </div>
   );

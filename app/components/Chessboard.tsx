@@ -92,7 +92,7 @@ export function GameChessboard({ game, side, onMove, onSurrender, onUndo }: Game
   return (
     <div className="flex grow flex-col gap-4">
       <div className="text-center">{getGameHeader()}</div>
-      <div>
+      <div className="m-auto my-0 w-[70%] max-w-[70vh] md:w-full">
         <Chessboard
           arePiecesDraggable={false}
           boardOrientation={side}
@@ -105,29 +105,29 @@ export function GameChessboard({ game, side, onMove, onSurrender, onUndo }: Game
           }}
           onSquareClick={onSquareClick}
         />
-      </div>
-      <div className="flex gap-2">
-        <button
-          className="btn-outline btn"
-          type="button"
-          onClick={() => {
-            deselectPiece();
-            onSurrender();
-          }}
-        >
-          Surrender
-        </button>
-        <button
-          className="btn-outline btn"
-          disabled={game.turn() === side[0] || game.pgn().length === 0}
-          type="button"
-          onClick={() => {
-            deselectPiece();
-            onUndo();
-          }}
-        >
-          Undo
-        </button>
+        <div className="flex justify-center gap-2 md:justify-start">
+          <button
+            className="btn-outline btn"
+            type="button"
+            onClick={() => {
+              deselectPiece();
+              onSurrender();
+            }}
+          >
+            Surrender
+          </button>
+          <button
+            className="btn-outline btn"
+            disabled={game.turn() === side[0] || game.pgn().length === 0}
+            type="button"
+            onClick={() => {
+              deselectPiece();
+              onUndo();
+            }}
+          >
+            Undo
+          </button>
+        </div>
       </div>
     </div>
   );

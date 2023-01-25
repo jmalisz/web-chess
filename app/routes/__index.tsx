@@ -45,18 +45,25 @@ export function IndexLayout() {
 
   return (
     <div className="flex h-screen flex-col items-center">
-      <header className="sticky top-0 z-10 w-full border-b border-b-gray-200 bg-base-100">
+      <header className="sticky top-0 z-10 hidden w-full border-b border-b-gray-200 bg-base-100 md:block">
         <div className="m-auto max-w-5xl p-4">
           <Link to="/">
-            <h1 className="text-3xl text-primary focus:text-primary-focus">Web-Chess</h1>
+            <h1 className="text-center text-3xl text-primary focus:text-primary-focus lg:text-left">
+              Web-Chess
+            </h1>
           </Link>
         </div>
       </header>
       <div className="w-full max-w-5xl flex-grow justify-center p-4">
         <Outlet />
       </div>
-      <footer className="flex max-w-5xl justify-center p-4 opacity-20">
-        Made by Jakub Maliszewski
+      <footer className="flex max-w-5xl flex-col justify-center p-4 ">
+        <Link className="md:hidden" to="/">
+          <h1 className="text-center text-3xl text-primary focus:text-primary-focus lg:text-left">
+            Web-Chess
+          </h1>
+        </Link>
+        <span className="opacity-20">Made by Jakub Maliszewski</span>
       </footer>
     </div>
   );

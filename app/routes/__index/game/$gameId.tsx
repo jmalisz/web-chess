@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import { Chatbox } from "~/components/Chatbox";
 import { GameChessboard } from "~/components/Chessboard";
+import { Spinner } from "~/components/Spinner";
 import { useDialogContext } from "~/hooks/useDialog";
 import { useSocketIo } from "~/hooks/useSocketIo";
 
@@ -174,10 +175,10 @@ export function GameRoute() {
     });
   }, [gameId, setDialog, socketIo]);
 
-  if (!game || !gameData || !socketIo) return "Loading...";
+  if (!game || !gameData || !socketIo) return <Spinner />;
 
   return (
-    <div className="flex gap-4">
+    <div className="flex flex-col gap-4 md:flex-row">
       <GameChessboard
         game={game}
         side={gameData.side}
